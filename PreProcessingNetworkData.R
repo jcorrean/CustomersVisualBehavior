@@ -1,4 +1,4 @@
-setwd("/home/juan/Documents/PaperConAndreinaYJulian/nuevo")
+
 library(readr)
 Secuencia <- read_delim("Secuencia.csv", ";",
                         escape_double = FALSE, trim_ws = TRUE)
