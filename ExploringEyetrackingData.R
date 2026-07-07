@@ -1,4 +1,6 @@
 # setwd("/home/julan/ownCloud/FederalSergipe/Projetos/Konrad/Curso/Practicas/Booking/Analisis/data/")
+
+GraphMeasures2 <- GraphMeasures
 library(readr)
 GraphMeasures2 <- read_delim("GraphMeasures2.csv", ",",
                              escape_double = FALSE, trim_ws = TRUE)
@@ -80,6 +82,7 @@ m2 <- t1way(pave2$Closeness ~ pave2$Posicion)
 m3 <- t1way(pave2$Betweeness ~ pave2$Posicion, tr=0.1)
 m4 <- t1way(pave2$IPCC3 ~ pave2$Posicion)
 lincon(pave2$IPCC3 ~ pave2$Posicion)
+library(psych)
 describeBy(pave2$IPCC3, group = pave2$Posicion, mat = TRUE)
 
 m1
