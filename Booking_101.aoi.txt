@@ -1,0 +1,30 @@
+x0,y0,x1,y1,Areas
+541,24,763,244,Imagen Estímulo Superior
+541,387,763,609,Imagen Estímulo Central
+541,744,763,964,Imagen Estímulo Inferior
+937,30,1004,52,Estrellas ES
+881,420,940,434,Estrellas EC
+895,785,964,804,Estrellas EI
+1065,96,1170,115,Dist from center ES
+1065,458,1170,474,Dist from center EC
+1065,819,1170,835,Dist from center EI
+1244,25,1326,49,Review score ES
+1244,388,1333,408,Review score EC
+1244,745,1333,767,Review score EI
+1332,25,1374,67,Review score ES
+1332,384,1374,426,Review score EC
+1332,743,1374,784,Review score EI
+1200,47,1333,67,No of comments
+1200,406,1333,425,No of comments
+1200,772,1333,785,No of comments
+1263,69,1372,91,Location score
+1263,426,1372,449,Location score
+1263,791,1372,808,Location score
+1200,168,1375,199,Price
+1200,535,1375,555,Price
+1200,892,1375,919,Price
+530,10,1390,350,Superior
+530,366,1390,712,Central
+530,726,1390,1070,Inferior
+
+

@@ -1,0 +1,28 @@
+Area,Nombre area
+0,Imagen Estímulo Superior
+1,Imagen Estímulo Central
+2,Imagen Estímulo Inferior
+3,Estrellas ES
+4,Estrellas EC
+5,Estrellas EI
+6,Dist from center ES
+7,Dist from center EC
+8,Dist from center EI
+9,Review score ES
+10,Review score EC
+11,Review score EI
+12,Review score ES
+13,Review score EC
+14,Review score EI
+15,No of comments ES
+16,No of comments EC
+17,No of comments EI
+18,Location score ES
+19,Location score EC
+20,Location score EI
+21,Price ES
+22,Price EC
+23,Price EI
+24,Superior
+25,Central
+26,Inferior
