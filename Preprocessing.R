@@ -7,103 +7,109 @@ library(igraph)
 
 build_aoi_network <- function(df){
  
- # Orden temporal
+ # ordenar por secuencia temporal
  df <- df[order(df$Secuencia), ]
  
- # Secuencia original de AOIs
+ # extraer AOIs
  areas <- df$Area
  
- # Eliminar permanencias consecutivas
+ # eliminar permanencias consecutivas
  areas <- areas[
   c(TRUE, diff(areas) != 0)
  ]
  
- # Necesitamos al menos dos AOIs
- if(length(areas) < 2){
-  return(NULL)
- }
- 
- # Crear aristas
+ # construir aristas
  edges <- data.frame(
   from = head(areas, -1),
   to   = tail(areas, -1)
  )
  
- # Frecuencia de visitas por AOI
- node_freq <- table(df$Area)
- 
- # Grafo dirigido
  g <- graph_from_data_frame(
   edges,
   directed = TRUE
  )
  
- # Atributo del nodo
- V(g)$freq <- as.numeric(
-  node_freq[
-   match(
-    V(g)$name,
-    names(node_freq)
-   )
-  ]
- )
- 
  return(
   list(
    graph = g,
-   edges = edges,
-   node_freq = node_freq
+   edges = edges
   )
  )
 }
 
 
+build_aoi_network
 
 
 
+NetworkList <- list()
+
+subjects <- unique(Secuencia$Sujeto)
+
+for(s in subjects){
+ 
+ data_s <- dplyr::filter(
+  Secuencia,
+  Sujeto == s
+ )
+ 
+ ensayos <- unique(data_s$Ensayo)
+ 
+ for(e in ensayos){
+  
+  data_se <- dplyr::filter(
+   data_s,
+   Ensayo == e
+  )
+  
+  net <- build_aoi_network(data_se)
+  
+  if(!is.null(net)){
+   
+   nombre <- paste0(
+    "S",
+    s,
+    "_E",
+    e
+   )
+   
+   NetworkList[[nombre]] <- net
+  }
+ }
+}
 
 
+s <- 101
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-datos <- subset(
+data_s <- dplyr::filter(
  Secuencia,
- Sujeto==104 &
-  Ensayo==1
+ Sujeto == s
 )
 
-s104 <- datos[order(datos$Secuencia), ]
+unique(data_s$Ensayo)
+
+ data_se <- dplyr::filter(
+  data_s,
+  Ensayo == 1
+ )
+
+net <- build_aoi_network(data_se)
+
+net
 
 
+plot(net$graph)
 
-areas <- s104$Area
-
-# Colapsar repeticiones consecutivas
-areas <- areas[
- c(TRUE, diff(areas) != 0)
-]
-
-edges <- data.frame(
- from = head(areas, -1),
- to   = tail(areas, -1)
+data_se <- dplyr::filter(
+ Secuencia,
+ Sujeto == 101,
+ Ensayo == 1
 )
 
-library(igraph)
+str(data_se)
 
-g <- graph_from_data_frame(
- edges,
- directed = TRUE
-)
-plot(g)
+
+head(data_se$Area)
+class(data_se$Area)
+
+
