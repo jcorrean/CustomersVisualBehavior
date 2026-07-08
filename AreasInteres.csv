@@ -8,12 +8,12 @@ Area,Nombre area
 6,Dist from center ES
 7,Dist from center EC
 8,Dist from center EI
-9,Review score ES
-10,Review score EC
-11,Review score EI
-12,Review score ES
-13,Review score EC
-14,Review score EI
+9,Review score ES word
+10,Review score EC word
+11,Review score EI word
+12,Review score ES number
+13,Review score EC number
+14,Review score EI number
 15,No of comments ES
 16,No of comments EC
 17,No of comments EI
