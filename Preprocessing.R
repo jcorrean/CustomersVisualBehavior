@@ -111,5 +111,6 @@ str(data_se)
 
 head(data_se$Area)
 class(data_se$Area)
+diff(areas)
 
 
