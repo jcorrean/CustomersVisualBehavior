@@ -220,3 +220,37 @@ sort(
   AOI_frequency,
   decreasing=TRUE
 )
+
+# ¿Qué transiciones aparecen más frecuentemente?
+
+all_edges <- do.call(
+  rbind,
+  lapply(
+    NetworkList,
+    function(x)
+      x$edges
+  )
+)
+
+table(
+  all_edges$from,
+  all_edges$to
+)
+
+
+all_edges |>
+  count(from,to) |>
+  arrange(desc(n))
+
+
+all_edges <- do.call(
+  rbind,
+  lapply(
+    NetworkList,
+    function(x)
+      x$edges
+  )
+)
+
+TransitionMatrix <- all_edges |>
+  count(from,to)
