@@ -161,6 +161,14 @@ for(s in subjects){
     }
   }
 }
+dim(TrajectoryFeatures)
+length(unique(TrajectoryFeatures$Sujeto))
+table(TrajectoryFeatures$Sujeto)
+
+head(TrajectoryFeatures)
+dim(TrajectoryFeatures)
+length(unique(TrajectoryFeatures$Sujeto))
+
 # =====================================================
 # EJEMPLO
 # =====================================================
