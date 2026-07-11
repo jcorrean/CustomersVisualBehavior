@@ -146,6 +146,7 @@ for(s in subjects){
         data.frame(
           Sujeto = s,
           Ensayo = e,
+          Choice <- unique(data_se$ChosenCondition),
           
           FirstAOI = net$FirstAOI,
           FirstTransition = net$FirstTransition,
@@ -161,13 +162,38 @@ for(s in subjects){
     }
   }
 }
-dim(TrajectoryFeatures)
-length(unique(TrajectoryFeatures$Sujeto))
-table(TrajectoryFeatures$Sujeto)
+names(TrajectoryFeatures$Choice....unique.data_se.ChosenCondition.) <- "Choice"
+names(TrajectoryFeatures)[3] <- "Choice"
 
-head(TrajectoryFeatures)
-dim(TrajectoryFeatures)
-length(unique(TrajectoryFeatures$Sujeto))
+# ¿Qué AOI aparece primero entre quienes terminan eligiendo Precio?
+table(
+  TrajectoryFeatures$FirstAOI,
+  TrajectoryFeatures$Choice
+)
+
+# ¿Qué transición inicial es más frecuente?
+table(
+  TrajectoryFeatures$FirstTransition,
+  TrajectoryFeatures$Choice
+)
+
+# ¿Qué secuencias iniciales aparecen más?
+TrajectoryFeatures |>
+  count(
+    First3AOIs,
+    Choice
+  ) |>
+  arrange(desc(n))
+
+table(TrajectoryFeatures$Choice)
+
+prop.table(
+  table(
+    TrajectoryFeatures$FirstAOI,
+    TrajectoryFeatures$Choice
+  ),
+  margin=2
+)
 
 # =====================================================
 # EJEMPLO
