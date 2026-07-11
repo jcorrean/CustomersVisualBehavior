@@ -19,39 +19,54 @@ Secuencia <- read_delim(
 
 build_aoi_network <- function(df){
   
-  # Orden temporal
+  # =====================================
+  # ORDEN TEMPORAL
+  # =====================================
+  
   df <- df[order(df$Secuencia), ]
   
-  # AOIs visitados
   areas <- df$Area
   
-  # Si solo hay una observación no se puede construir red
   if(length(areas) < 2){
-    
     return(NULL)
-    
   }
   
-  # Transiciones consecutivas
+  # =====================================
+  # VARIABLES SECUENCIALES
+  # =====================================
+  
+  FirstAOI <- as.character(areas[1])
+  
+  FirstTransition <- paste0(
+    areas[1],
+    "_",
+    areas[2]
+  )
+  
+  First3AOIs <- paste(
+    head(areas,3),
+    collapse = "_"
+  )
+  
+  # =====================================
+  # RED
+  # =====================================
+  
   edges <- data.frame(
     from = head(areas,-1),
     to   = tail(areas,-1)
   )
   
-  # Frecuencia de transición
   edges_weighted <- edges %>%
     count(from,to,name="weight")
   
-  # Grafo dirigido
   g <- graph_from_data_frame(
     edges_weighted,
     directed = TRUE
   )
   
-  # Peso de aristas
   E(g)$weight <- edges_weighted$weight
   
-  # Frecuencia de visitas por AOI
   node_freq <- table(areas)
   
   V(g)$visits <- as.numeric(
@@ -63,13 +78,20 @@ build_aoi_network <- function(df){
     ]
   )
   
-  # Devolver todo
+  # =====================================
+  # RESULTADO
+  # =====================================
+  
   return(
     list(
       graph = g,
       edges = edges,
       edges_weighted = edges_weighted,
-      node_freq = node_freq
+      node_freq = node_freq,
+      
+      FirstAOI = FirstAOI,
+      FirstTransition = FirstTransition,
+      First3AOIs = First3AOIs
     )
   )
 }
@@ -79,6 +101,8 @@ build_aoi_network <- function(df){
 # =====================================================
 
 NetworkList <- list()
+
+TrajectoryFeatures <- data.frame()
 
 subjects <- unique(Secuencia$Sujeto)
 
@@ -113,10 +137,30 @@ for(s in subjects){
       
       NetworkList[[nombre]] <- net
       
+      # ===================================
+      # TABLA DE CARACTERISTICAS
+      # ===================================
+      
+      TrajectoryFeatures <- rbind(
+        TrajectoryFeatures,
+        data.frame(
+          Sujeto = s,
+          Ensayo = e,
+          
+          FirstAOI = net$FirstAOI,
+          FirstTransition = net$FirstTransition,
+          First3AOIs = net$First3AOIs,
+          
+          Nodes = gorder(net$graph),
+          Edges = gsize(net$graph),
+          
+          stringsAsFactors = FALSE
+        )
+      )
+      
     }
   }
 }
-
 # =====================================================
 # EJEMPLO
 # =====================================================
