@@ -44,7 +44,7 @@ build_aoi_network <- function(df){
   )
   
   First3AOIs <- paste(
-    head(areas,3),
+    head(areas, 3),
     collapse = "_"
   )
   
@@ -53,12 +53,12 @@ build_aoi_network <- function(df){
   # =====================================
   
   edges <- data.frame(
-    from = head(areas,-1),
-    to   = tail(areas,-1)
+    from = head(areas, -1),
+    to   = tail(areas, -1)
   )
   
   edges_weighted <- edges %>%
-    count(from,to,name="weight")
+    count(from, to, name = "weight")
   
   g <- graph_from_data_frame(
     edges_weighted,
@@ -66,6 +66,10 @@ build_aoi_network <- function(df){
   )
   
   E(g)$weight <- edges_weighted$weight
+  
+  # =====================================
+  # ATRIBUTOS DE NODO
+  # =====================================
   
   node_freq <- table(areas)
   
@@ -76,6 +80,17 @@ build_aoi_network <- function(df){
         names(node_freq)
       )
     ]
+  )
+  
+  # =====================================
+  # ENTROPIA DE TRANSICION
+  # =====================================
+  
+  probs <- edges_weighted$weight /
+    sum(edges_weighted$weight)
+  
+  Entropy <- -sum(
+    probs * log2(probs)
   )
   
   # =====================================
@@ -91,10 +106,13 @@ build_aoi_network <- function(df){
       
       FirstAOI = FirstAOI,
       FirstTransition = FirstTransition,
-      First3AOIs = First3AOIs
+      First3AOIs = First3AOIs,
+      
+      Entropy = Entropy
     )
   )
 }
+
 
 # =====================================================
 # CONSTRUIR TODAS LAS REDES
@@ -146,7 +164,8 @@ for(s in subjects){
         data.frame(
           Sujeto = s,
           Ensayo = e,
-          Choice <- unique(data_se$ChosenCondition),
+          
+          Choice = unique(data_se$ChosenCondition),
           
           FirstAOI = net$FirstAOI,
           FirstTransition = net$FirstTransition,
@@ -155,6 +174,8 @@ for(s in subjects){
           Nodes = gorder(net$graph),
           Edges = gsize(net$graph),
           
+          Entropy = net$Entropy,
+          
           stringsAsFactors = FALSE
         )
       )
@@ -162,173 +183,67 @@ for(s in subjects){
     }
   }
 }
-names(TrajectoryFeatures$Choice....unique.data_se.ChosenCondition.) <- "Choice"
-names(TrajectoryFeatures)[3] <- "Choice"
 
-# ¿Qué AOI aparece primero entre quienes terminan eligiendo Precio?
-table(
-  TrajectoryFeatures$FirstAOI,
-  TrajectoryFeatures$Choice
+summary(TrajectoryFeatures$Entropy)
+
+aggregate(
+  Entropy ~ Choice,
+  data = TrajectoryFeatures,
+  mean
 )
 
-# ¿Qué transición inicial es más frecuente?
-table(
-  TrajectoryFeatures$FirstTransition,
-  TrajectoryFeatures$Choice
+boxplot(
+  Entropy ~ Choice,
+  data = TrajectoryFeatures
 )
 
-# ¿Qué secuencias iniciales aparecen más?
-TrajectoryFeatures |>
-  count(
-    First3AOIs,
-    Choice
-  ) |>
-  arrange(desc(n))
-
-table(TrajectoryFeatures$Choice)
-
-prop.table(
-  table(
-    TrajectoryFeatures$FirstAOI,
-    TrajectoryFeatures$Choice
-  ),
-  margin=2
-)
-
-# =====================================================
-# EJEMPLO
-# =====================================================
-
-net104 <- NetworkList[["S104_E1"]]
-
-plot(
-  net104$graph,
-  vertex.size = V(net104$graph)$visits * 5,
-  edge.width = E(net104$graph)$weight,
-  vertex.label.cex = 0.8,
-  edge.arrow.size = .4,
-  layout = layout_with_fr(net104$graph)
-)
-
-length(NetworkList)
-
-Secuencia |>
-  dplyr::distinct(Sujeto, Ensayo) |>
-  nrow()
-
-
-Problemas <- data.frame()
-
-subjects <- unique(Secuencia$Sujeto)
-
-for(s in subjects){
-  
-  data_s <- filter(
-    Secuencia,
-    Sujeto == s
-  )
-  
-  ensayos <- unique(data_s$Ensayo)
-  
-  for(e in ensayos){
-    
-    data_se <- filter(
-      data_s,
-      Ensayo == e
-    )
-    
-    if(nrow(data_se) < 2){
-      
-      Problemas <- rbind(
-        Problemas,
-        data.frame(
-          Sujeto = s,
-          Ensayo = e,
-          N = nrow(data_se)
-        )
-      )
-      
-    }
-    
-  }
-  
-}
-
-Problemas
-table(Problemas$Sujeto)
-
-table(
-  sapply(
-    NetworkList,
-    function(x) gorder(x$graph)
+anova(
+  lm(
+    Entropy ~ Choice,
+    data = TrajectoryFeatures
   )
 )
-
-
 
 summary(
-  sapply(
-    NetworkList,
-    function(x)
-      gorder(x$graph)
+  aov(
+    Entropy ~ Choice,
+    data = TrajectoryFeatures
   )
 )
 
+
+aggregate(
+  Nodes ~ Choice,
+  data = TrajectoryFeatures,
+  mean
+)
+
+aggregate(
+  Edges ~ Choice,
+  data = TrajectoryFeatures,
+  mean
+)
 
 summary(
-  sapply(
-    NetworkList,
-    function(x)
-      gsize(x$graph)
-  )
-)
-# ¿Qué AOIs aparecen más frecuentemente?
-
-
-AOI_frequency <- table(
-  unlist(
-    lapply(
-      NetworkList,
-      function(x) V(x$graph)$name
-    )
+  aov(
+    Nodes ~ Choice,
+    data = TrajectoryFeatures
   )
 )
 
-sort(
-  AOI_frequency,
-  decreasing=TRUE
+summary(
+  aov(
+    Edges ~ Choice,
+    data = TrajectoryFeatures
+  )
 )
 
-# ¿Qué transiciones aparecen más frecuentemente?
-
-all_edges <- do.call(
-  rbind,
-  lapply(
-    NetworkList,
-    function(x)
-      x$edges
-  )
+quantile(
+  TrajectoryFeatures$Nodes,
+  probs=c(.33,.66)
 )
 
 table(
-  all_edges$from,
-  all_edges$to
+  SearchType,
+  Choice
 )
-
-
-all_edges |>
-  count(from,to) |>
-  arrange(desc(n))
-
-
-all_edges <- do.call(
-  rbind,
-  lapply(
-    NetworkList,
-    function(x)
-      x$edges
-  )
-)
-
-TransitionMatrix <- all_edges |>
-  count(from,to)
