@@ -184,6 +184,9 @@ for(s in subjects){
   }
 }
 
+
+
+
 summary(TrajectoryFeatures$Entropy)
 
 aggregate(
@@ -289,3 +292,4 @@ m4 <- multinom(
   Choice ~ Nodes + Edges + Entropy,
   data = TrajectoryFeatures
 )
+

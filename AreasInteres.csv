@@ -1,28 +1,28 @@
 Area,Nombre area
-0,Imagen Estímulo Superior
-1,Imagen Estímulo Central
-2,Imagen Estímulo Inferior
-3,Estrellas ES
-4,Estrellas EC
-5,Estrellas EI
-6,Dist from center ES
-7,Dist from center EC
-8,Dist from center EI
-9,Review score ES word
-10,Review score EC word
-11,Review score EI word
-12,Review score ES number
-13,Review score EC number
-14,Review score EI number
-15,No of comments ES
-16,No of comments EC
-17,No of comments EI
-18,Location score ES
-19,Location score EC
-20,Location score EI
-21,Price ES
-22,Price EC
-23,Price EI
+0,Image (Top)
+1,Image (Central)
+2,Image (Bottom)
+3,Stars Rating (Top)
+4,Stars Rating (Central)
+5,Stars Rating (Bottom)
+6,Dist to City Center (Top)
+7,Dist to City Center (Central)
+8,Dist to City Center (Bottom)
+9,Review score letters (Top)
+10,Review score letters (Central)
+11,Review score letters (Bottom)
+12,Review score number (Top)
+13,Review score number (Central)
+14,Review score number (Bottom)
+15,Number of Comments (Top)
+16,Number of Comments (Central)
+17,Number of Comments (Bottom)
+18,Location score (Top)
+19,Location score (Central)
+20,Location score (Bottom)
+21,Price (Top)
+22,Price (Central)
+23,Price (Bottom)
 24,Superior
 25,Central
 26,Inferior

@@ -298,3 +298,114 @@ knitr::kable(multiverse_results, digits = 4,
 caption = "Results of the multiverse analysis."
 )
 ```
+
+# Analysis
+
+```{r}
+```{r table_multinomial_models, message=FALSE, warning=FALSE}
+
+library(nnet)
+library(pscl)
+library(knitr)
+library(dplyr)
+
+# Asegurar que es factor
+TrajectoryFeatures$Choice <- as.factor(
+  TrajectoryFeatures$Choice
+)
+
+#################################################
+# MODELS
+#################################################
+
+m1 <- multinom(
+  Choice ~ Entropy,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+m2 <- multinom(
+  Choice ~ Entropy + FirstAOI,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+m3 <- multinom(
+  Choice ~ Entropy + FirstTransition,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+m4 <- multinom(
+  Choice ~ Nodes + Edges + Entropy,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+#################################################
+# TABLE
+#################################################
+
+results_models <- data.frame(
+  Model = c(
+    "M1",
+    "M2",
+    "M3",
+    "M4"
+  ),
+  
+  Predictors = c(
+    "Entropy",
+    "FirstAOI + Entropy",
+    "FirstTransition + Entropy",
+    "Nodes + Edges + Entropy"
+  ),
+  
+  McFadden_R2 = c(
+    pR2(m1)["McFadden"],
+    pR2(m2)["McFadden"],
+    pR2(m3)["McFadden"],
+    pR2(m4)["McFadden"]
+  ),
+  
+  AIC = c(
+    AIC(m1),
+    AIC(m2),
+    AIC(m3),
+    AIC(m4)
+  )
+)
+
+results_models <- results_models %>%
+  mutate(
+    McFadden_R2 = round(McFadden_R2, 3),
+    AIC = round(AIC, 1)
+  )
+
+kable(
+  results_models,
+  caption = "Comparative performance of multinomial models predicting booking decisions from alternative representations of visual exploration."
+)
+```
+
+Most global representations of visual exploration fail to discriminate booking decisions. However, local early-stage navigational behavior contains substantially more predictive information than later aggregate exploration characteristics.
+
+```{r}
+library(pheatmap)
+
+# matriz de transiciones
+mat <- xtabs(
+  weight ~ from + to,
+  data = agg_edges
+)
+
+pheatmap(
+  mat,
+  clustering_distance_rows = "euclidean",
+  clustering_distance_cols = "euclidean",
+  clustering_method = "ward.D2",
+  color = colorRampPalette(
+    c("white","orange","red")
+  )(100)
+)
+```
