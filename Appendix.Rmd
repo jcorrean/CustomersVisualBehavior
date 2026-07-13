@@ -1,10 +1,16 @@
+---
+title: "Appendix"
+author: "Juan C. Correa"
+date: "2026-07-13"
+output: html_document
+---
+
+# Pre-processing data
+
+```{r}
 library(readr)
 library(dplyr)
 library(igraph)
-
-# =====================================================
-# CARGAR DATOS
-# =====================================================
 
 Secuencia <- read_delim(
   "Secuencia.csv",
@@ -185,107 +191,110 @@ for(s in subjects){
 }
 
 summary(TrajectoryFeatures$Entropy)
+```
 
-aggregate(
-  Entropy ~ Choice,
-  data = TrajectoryFeatures,
-  mean
-)
 
-boxplot(
-  Entropy ~ Choice,
-  data = TrajectoryFeatures
-)
+```{r tabla1}
+library(dplyr)
+library(knitr)
 
-library(ggplot2)
-ggplot(
-  TrajectoryFeatures,
-  aes(
-    x = Choice,
-    y = Entropy,
-    fill = Choice
-  )
-) +
-  geom_violin() +
-  theme_minimal()
-
-anova(
-  lm(
-    Entropy ~ Choice,
-    data = TrajectoryFeatures
-  )
-)
-
-summary(
-  aov(
-    Entropy ~ Choice,
-    data = TrajectoryFeatures
+desc <- data.frame(
+  Variable = c("Nodes","Edges","Entropy"),
+  Mean = c(
+    mean(TrajectoryFeatures$Nodes),
+    mean(TrajectoryFeatures$Edges),
+    mean(TrajectoryFeatures$Entropy)
+  ),
+  SD = c(
+    sd(TrajectoryFeatures$Nodes),
+    sd(TrajectoryFeatures$Edges),
+    sd(TrajectoryFeatures$Entropy)
+  ),
+  Min = c(
+    min(TrajectoryFeatures$Nodes),
+    min(TrajectoryFeatures$Edges),
+    min(TrajectoryFeatures$Entropy)
+  ),
+  Max = c(
+    max(TrajectoryFeatures$Nodes),
+    max(TrajectoryFeatures$Edges),
+    max(TrajectoryFeatures$Entropy)
   )
 )
 
+kable(desc,digits=2)
+```
 
-aggregate(
-  Nodes ~ Choice,
-  data = TrajectoryFeatures,
-  mean
+
+```{r fig1} 
+library(igraph) 
+library(dplyr) 
+all_edges <- bind_rows( lapply( NetworkList, function(x) x$edges ) ) 
+agg_edges <- all_edges %>% count(from,to,name="weight") 
+g_agg <- graph_from_data_frame( agg_edges, directed=TRUE ) 
+E(g_agg)$width <- scales::rescale( agg_edges$weight, to=c(1,8) ) 
+plot( g_agg, edge.arrow.size=.3, vertex.size=35, vertex.label.cex=.9 )
+```
+
+```{r fig2} 
+library(ggplot2) 
+ggplot( agg_edges, aes( x=from, y=to, fill=weight ) )+ geom_tile()+ scale_fill_viridis_c()+ theme_minimal()+ labs( x="Origin AOI", y="Destination AOI", fill="Transitions" )
+```
+
+```{r tabla2} 
+choice_desc <- TrajectoryFeatures %>% group_by(Choice) %>% summarise( N=n(), MeanNodes=mean(Nodes), SDNodes=sd(Nodes), MeanEdges=mean(Edges), SDEdges=sd(Edges), MeanEntropy=mean(Entropy), SDEntropy=sd(Entropy) ) 
+kable(choice_desc,digits=2)
+```
+The three groups exhibit remarkably similar exploration characteristics.
+
+```{r fig3} 
+library(tidyr) 
+plot_data <- TrajectoryFeatures %>% pivot_longer( cols=c(Nodes,Edges,Entropy), names_to="Metric", values_to="Value" ) 
+ggplot( plot_data, aes( x=Choice, y=Value, fill=Choice ) )+ geom_boxplot()+ facet_wrap(~Metric,scales="free_y")+ theme_minimal()
+```
+
+
+```{r tabla3} 
+tabla_firstAOI <- table(
+TrajectoryFeatures$FirstAOI,TrajectoryFeatures$Choice)
+
+test_firstAOI <- chisq.test(tabla_firstAOI)
+tabla_firstTransition <- table(
+
+TrajectoryFeatures$FirstTransition, TrajectoryFeatures$Choice)
+
+
+
+test_firstTransition <- chisq.test(tabla_firstTransition)
+
+# First 3 AOIs
+
+tabla_first3 <- table(TrajectoryFeatures$First3AOIs, TrajectoryFeatures$Choice)
+
+
+test_first3 <- chisq.test(tabla_first3)
+
+# ANOVAs
+
+anova_nodes <- summary(aov(Nodes ~ Choice, data = TrajectoryFeatures))
+
+anova_edges <- summary(
+aov(Edges ~ Choice, data = TrajectoryFeatures))
+anova_entropy <- summary(aov(Entropy ~ Choice, data = TrajectoryFeatures))
+
+multiverse_results <- data.frame(Universe = c(
+"FirstAOI",
+"FirstTransition",
+"First3AOIs",
+"Nodes",
+"Edges",
+"Entropy"),
+Test = c("Chi-square", "Chi-square", "Chi-square", "ANOVA", "ANOVA", "ANOVA"),
+Pvalue = c(test_firstAOI$p.value, test_firstTransition$p.value, test_first3$p.value, anova_nodes[[1]]["Choice","Pr(>F)"],
+anova_edges[[1]]["Choice","Pr(>F)"],
+anova_entropy[[1]]["Choice","Pr(>F)"]))
+
+knitr::kable(multiverse_results, digits = 4,
+caption = "Results of the multiverse analysis."
 )
-
-aggregate(
-  Edges ~ Choice,
-  data = TrajectoryFeatures,
-  mean
-)
-
-summary(
-  aov(
-    Nodes ~ Choice,
-    data = TrajectoryFeatures
-  )
-)
-
-summary(
-  aov(
-    Edges ~ Choice,
-    data = TrajectoryFeatures
-  )
-)
-
-quantile(
-  TrajectoryFeatures$Nodes,
-  probs=c(.33,.66)
-)
-
-table(
-  SearchType,
-  Choice
-)
-
-tabla3 <- table(
-  TrajectoryFeatures$First3AOIs,
-  TrajectoryFeatures$Choice
-)
-
-chisq.test(tabla3)
-
-
-library(nnet)
-
-m1 <- multinom(
-  Choice ~ Entropy,
-  data = TrajectoryFeatures
-)
-
-m2 <- multinom(
-  Choice ~ FirstAOI + Entropy,
-  data = TrajectoryFeatures
-)
-
-m3 <- multinom(
-  Choice ~ FirstTransition + Entropy,
-  data = TrajectoryFeatures
-)
-
-m4 <- multinom(
-  Choice ~ Nodes + Edges + Entropy,
-  data = TrajectoryFeatures
-)
+```
