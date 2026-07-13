@@ -247,3 +247,33 @@ table(
   SearchType,
   Choice
 )
+
+tabla3 <- table(
+  TrajectoryFeatures$First3AOIs,
+  TrajectoryFeatures$Choice
+)
+
+chisq.test(tabla3)
+
+
+library(nnet)
+
+m1 <- multinom(
+  Choice ~ Entropy,
+  data = TrajectoryFeatures
+)
+
+m2 <- multinom(
+  Choice ~ FirstAOI + Entropy,
+  data = TrajectoryFeatures
+)
+
+m3 <- multinom(
+  Choice ~ FirstTransition + Entropy,
+  data = TrajectoryFeatures
+)
+
+m4 <- multinom(
+  Choice ~ Nodes + Edges + Entropy,
+  data = TrajectoryFeatures
+)
