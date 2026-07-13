@@ -13,6 +13,20 @@ Secuencia <- read_delim(
   trim_ws = TRUE
 )
 
+AreasInteres <- read_csv("AreasInteres.csv")
+
+Secuencia <- Secuencia %>%
+  left_join(
+    AreasInteres,
+    by = "Area"
+  ) %>%
+  dplyr::select(
+    -Area
+  ) %>%
+  rename(
+    Area = `Nombre area`
+  )
+
 # =====================================================
 # FUNCION PARA RECONSTRUIR RED AOI->AOI
 # =====================================================
