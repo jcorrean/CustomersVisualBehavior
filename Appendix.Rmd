@@ -301,7 +301,7 @@ caption = "Results of the multiverse analysis."
 
 # Analysis
 
-```{r}
+
 ```{r table_multinomial_models, message=FALSE, warning=FALSE}
 
 library(nnet)
