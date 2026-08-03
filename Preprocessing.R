@@ -1,116 +1,309 @@
 library(readr)
-Secuencia <- read_delim("Secuencia.csv", 
-                        delim = ";", escape_double = FALSE, trim_ws = TRUE)
-
 library(dplyr)
 library(igraph)
 
-build_aoi_network <- function(df){
- 
- # ordenar por secuencia temporal
- df <- df[order(df$Secuencia), ]
- 
- # extraer AOIs
- areas <- df$Area
- 
- # eliminar permanencias consecutivas
- areas <- areas[
-  c(TRUE, diff(areas) != 0)
- ]
- 
- # construir aristas
- edges <- data.frame(
-  from = head(areas, -1),
-  to   = tail(areas, -1)
- )
- 
- g <- graph_from_data_frame(
-  edges,
-  directed = TRUE
- )
- 
- return(
-  list(
-   graph = g,
-   edges = edges
+# =====================================================
+# CARGAR DATOS
+# =====================================================
+
+Secuencia <- read_delim(
+  "Secuencia.csv",
+  delim = ";",
+  escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+AreasInteres <- read_csv("AreasInteres.csv")
+
+Secuencia <- Secuencia %>%
+  left_join(
+    AreasInteres,
+    by = "Area"
+  ) %>%
+  dplyr::select(
+    -Area
+  ) %>%
+  rename(
+    Area = `Nombre area`
   )
- )
+
+# =====================================================
+# FUNCION PARA RECONSTRUIR RED AOI->AOI
+# =====================================================
+
+build_aoi_network <- function(df){
+  
+  # =====================================
+  # ORDEN TEMPORAL
+  # =====================================
+  
+  df <- df[order(df$Secuencia), ]
+  
+  areas <- df$Area
+  
+  if(length(areas) < 2){
+    return(NULL)
+  }
+  
+  # =====================================
+  # VARIABLES SECUENCIALES
+  # =====================================
+  
+  FirstAOI <- as.character(areas[1])
+  
+  FirstTransition <- paste0(
+    areas[1],
+    "_",
+    areas[2]
+  )
+  
+  First3AOIs <- paste(
+    head(areas, 3),
+    collapse = "_"
+  )
+  
+  # =====================================
+  # RED
+  # =====================================
+  
+  edges <- data.frame(
+    from = head(areas, -1),
+    to   = tail(areas, -1)
+  )
+  
+  edges_weighted <- edges %>%
+    count(from, to, name = "weight")
+  
+  g <- graph_from_data_frame(
+    edges_weighted,
+    directed = TRUE
+  )
+  
+  E(g)$weight <- edges_weighted$weight
+  
+  # =====================================
+  # ATRIBUTOS DE NODO
+  # =====================================
+  
+  node_freq <- table(areas)
+  
+  V(g)$visits <- as.numeric(
+    node_freq[
+      match(
+        V(g)$name,
+        names(node_freq)
+      )
+    ]
+  )
+  
+  # =====================================
+  # ENTROPIA DE TRANSICION
+  # =====================================
+  
+  probs <- edges_weighted$weight /
+    sum(edges_weighted$weight)
+  
+  Entropy <- -sum(
+    probs * log2(probs)
+  )
+  
+  # =====================================
+  # RESULTADO
+  # =====================================
+  
+  return(
+    list(
+      graph = g,
+      edges = edges,
+      edges_weighted = edges_weighted,
+      node_freq = node_freq,
+      
+      FirstAOI = FirstAOI,
+      FirstTransition = FirstTransition,
+      First3AOIs = First3AOIs,
+      
+      Entropy = Entropy
+    )
+  )
 }
 
 
-build_aoi_network
-
-
+# =====================================================
+# CONSTRUIR TODAS LAS REDES
+# =====================================================
 
 NetworkList <- list()
+
+TrajectoryFeatures <- data.frame()
 
 subjects <- unique(Secuencia$Sujeto)
 
 for(s in subjects){
- 
- data_s <- dplyr::filter(
-  Secuencia,
-  Sujeto == s
- )
- 
- ensayos <- unique(data_s$Ensayo)
- 
- for(e in ensayos){
   
-  data_se <- dplyr::filter(
-   data_s,
-   Ensayo == e
+  cat("Procesando sujeto:",s,"\n")
+  
+  data_s <- filter(
+    Secuencia,
+    Sujeto == s
   )
   
-  net <- build_aoi_network(data_se)
+  ensayos <- unique(data_s$Ensayo)
   
-  if(!is.null(net)){
-   
-   nombre <- paste0(
-    "S",
-    s,
-    "_E",
-    e
-   )
-   
-   NetworkList[[nombre]] <- net
+  for(e in ensayos){
+    
+    data_se <- filter(
+      data_s,
+      Ensayo == e
+    )
+    
+    net <- build_aoi_network(data_se)
+    
+    if(!is.null(net)){
+      
+      nombre <- paste0(
+        "S",
+        s,
+        "_E",
+        e
+      )
+      
+      NetworkList[[nombre]] <- net
+      
+      # ===================================
+      # TABLA DE CARACTERISTICAS
+      # ===================================
+      
+      TrajectoryFeatures <- rbind(
+        TrajectoryFeatures,
+        data.frame(
+          Sujeto = s,
+          Ensayo = e,
+          
+          Choice = unique(data_se$ChosenCondition),
+          
+          FirstAOI = net$FirstAOI,
+          FirstTransition = net$FirstTransition,
+          First3AOIs = net$First3AOIs,
+          
+          Nodes = gorder(net$graph),
+          Edges = gsize(net$graph),
+          
+          Entropy = net$Entropy,
+          
+          stringsAsFactors = FALSE
+        )
+      )
+      
+    }
   }
- }
 }
 
 
-s <- 101
 
-data_s <- dplyr::filter(
- Secuencia,
- Sujeto == s
+
+summary(TrajectoryFeatures$Entropy)
+
+aggregate(
+  Entropy ~ Choice,
+  data = TrajectoryFeatures,
+  mean
 )
 
-unique(data_s$Ensayo)
-
- data_se <- dplyr::filter(
-  data_s,
-  Ensayo == 1
- )
-
-net <- build_aoi_network(data_se)
-
-net
-
-
-plot(net$graph)
-
-data_se <- dplyr::filter(
- Secuencia,
- Sujeto == 101,
- Ensayo == 1
+boxplot(
+  Entropy ~ Choice,
+  data = TrajectoryFeatures
 )
 
-str(data_se)
+library(ggplot2)
+ggplot(
+  TrajectoryFeatures,
+  aes(
+    x = Choice,
+    y = Entropy,
+    fill = Choice
+  )
+) +
+  geom_violin() +
+  theme_minimal()
+
+anova(
+  lm(
+    Entropy ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
+
+summary(
+  aov(
+    Entropy ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
 
 
-head(data_se$Area)
-class(data_se$Area)
-diff(areas)
+aggregate(
+  Nodes ~ Choice,
+  data = TrajectoryFeatures,
+  mean
+)
 
+aggregate(
+  Edges ~ Choice,
+  data = TrajectoryFeatures,
+  mean
+)
+
+summary(
+  aov(
+    Nodes ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
+
+summary(
+  aov(
+    Edges ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
+
+quantile(
+  TrajectoryFeatures$Nodes,
+  probs=c(.33,.66)
+)
+
+table(
+  SearchType,
+  Choice
+)
+
+tabla3 <- table(
+  TrajectoryFeatures$First3AOIs,
+  TrajectoryFeatures$Choice
+)
+
+chisq.test(tabla3)
+
+
+library(nnet)
+
+m1 <- multinom(
+  Choice ~ Entropy,
+  data = TrajectoryFeatures
+)
+
+m2 <- multinom(
+  Choice ~ FirstAOI + Entropy,
+  data = TrajectoryFeatures
+)
+
+m3 <- multinom(
+  Choice ~ FirstTransition + Entropy,
+  data = TrajectoryFeatures
+)
+
+m4 <- multinom(
+  Choice ~ Nodes + Edges + Entropy,
+  data = TrajectoryFeatures
+)
 

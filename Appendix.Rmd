@@ -1,0 +1,553 @@
+---
+title: "Online Supplementary Materials"
+author: "Juan C. Correa"
+date: "2026-07-15"
+output: html_document
+---
+
+# Appendix A. Data preprocessing and AOI-to-AOI network reconstruction
+
+```{r setup, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(igraph)
+library(knitr)
+library(ggplot2)
+library(pheatmap)
+library(nnet)
+library(pscl)
+```
+
+## Load raw data
+
+```{r load-data}
+Secuencia <- read_delim(
+  "Secuencia.csv",
+  delim = ";",
+  escape_double = FALSE,
+  trim_ws = TRUE
+)
+
+AreasInteres <- read_csv("AreasInteres.csv")
+
+Secuencia <- Secuencia %>%
+  left_join(
+    AreasInteres,
+    by = "Area"
+  ) %>%
+  dplyr::select(
+    -Area
+  ) %>%
+  rename(
+    Area = `Nombre area`
+  )
+```
+
+## AOI-to-AOI network reconstruction
+
+```{r network-function}
+build_aoi_network <- function(df){
+
+  df <- df[order(df$Secuencia), ]
+
+  areas <- df$Area
+
+  if(length(areas) < 2){
+    return(NULL)
+  }
+
+  ####################################################
+  # EARLY VISUAL EXPLORATION
+  ####################################################
+
+  FirstAOI <- as.character(
+    areas[1]
+  )
+
+  FirstTransition <- paste0(
+    areas[1],
+    "_",
+    areas[2]
+  )
+
+  First3AOIs <- paste(
+    head(areas, 3),
+    collapse = "_"
+  )
+
+  ####################################################
+  # AOI-TO-AOI NETWORK
+  ####################################################
+
+  edges <- data.frame(
+    from = head(areas, -1),
+    to   = tail(areas, -1)
+  )
+
+  edges_weighted <- edges %>%
+    count(
+      from,
+      to,
+      name = "weight"
+    )
+
+  g <- graph_from_data_frame(
+    edges_weighted,
+    directed = TRUE
+  )
+
+  E(g)$weight <- edges_weighted$weight
+
+  ####################################################
+  # AOI VISITS
+  ####################################################
+
+  node_freq <- table(areas)
+
+  V(g)$visits <- as.numeric(
+    node_freq[
+      match(
+        V(g)$name,
+        names(node_freq)
+      )
+    ]
+  )
+
+  ####################################################
+  # TRANSITION ENTROPY
+  ####################################################
+
+  probs <- edges_weighted$weight /
+    sum(edges_weighted$weight)
+
+  Entropy <- -sum(
+    probs * log2(probs)
+  )
+
+  ####################################################
+  # OUTPUT
+  ####################################################
+
+  return(
+    list(
+      graph = g,
+      edges = edges,
+      edges_weighted = edges_weighted,
+      node_freq = node_freq,
+
+      FirstAOI = FirstAOI,
+      FirstTransition = FirstTransition,
+      First3AOIs = First3AOIs,
+
+      Entropy = Entropy
+    )
+  )
+}
+```
+
+## Reconstruct all participant-trial networks
+
+```{r reconstruct-networks}
+NetworkList <- list()
+
+TrajectoryFeatures <- data.frame()
+
+subjects <- unique(
+  Secuencia$Sujeto
+)
+
+for(s in subjects){
+
+  data_s <- filter(
+    Secuencia,
+    Sujeto == s
+  )
+
+  ensayos <- unique(
+    data_s$Ensayo
+  )
+
+  for(e in ensayos){
+
+    data_se <- filter(
+      data_s,
+      Ensayo == e
+    )
+
+    net <- build_aoi_network(
+      data_se
+    )
+
+    if(!is.null(net)){
+
+      nombre <- paste0(
+        "S",
+        s,
+        "_E",
+        e
+      )
+
+      NetworkList[[nombre]] <- net
+
+      TrajectoryFeatures <- rbind(
+        TrajectoryFeatures,
+        data.frame(
+          Sujeto = s,
+          Ensayo = e,
+
+          Choice = unique(
+            data_se$ChosenCondition
+          ),
+
+          FirstAOI = net$FirstAOI,
+          FirstTransition = net$FirstTransition,
+          First3AOIs = net$First3AOIs,
+
+          Nodes = gorder(
+            net$graph
+          ),
+
+          Edges = gsize(
+            net$graph
+          ),
+
+          Entropy = net$Entropy,
+
+          stringsAsFactors = FALSE
+        )
+      )
+
+    }
+  }
+}
+
+summary(
+  TrajectoryFeatures
+)
+```
+
+# Appendix B. AOI visitation frequencies
+
+```{r aoi-frequency-table}
+all_aois <- bind_rows(
+  lapply(
+    NetworkList,
+    function(x){
+
+      data.frame(
+        AOI = names(
+          x$node_freq
+        ),
+        Visits = as.numeric(
+          x$node_freq
+        )
+      )
+
+    }
+  )
+)
+
+freq_tab <- all_aois %>%
+  group_by(AOI) %>%
+  summarise(
+    Visits = sum(Visits)
+  ) %>%
+  arrange(
+    desc(Visits)
+  )
+
+kable(
+  freq_tab,
+  caption = "AOI visitation frequencies."
+)
+```
+
+```{r aoi-frequency-figure}
+ggplot(
+  freq_tab,
+  aes(
+    reorder(AOI, Visits),
+    Visits
+  )
+)+
+  geom_col(
+    fill = "darkgreen"
+  )+
+  coord_flip()+
+  theme_minimal()+
+  labs(
+    x = "AOI",
+    y = "Visits"
+  )
+```
+
+# Appendix C. AOI-to-AOI transition heatmap
+
+## Aggregate transitions
+
+```{r aggregate-transitions}
+all_edges <- bind_rows(
+  lapply(
+    NetworkList,
+    function(x){
+      x$edges
+    }
+  )
+)
+
+agg_edges <- all_edges %>%
+  count(
+    from,
+    to,
+    name = "weight"
+  )
+```
+
+## Transition matrix
+
+```{r transition-matrix}
+mat <- xtabs(
+  weight ~ from + to,
+  data = agg_edges
+)
+
+mat
+```
+
+## Hierarchical clustering heatmap
+
+```{r heatmap}
+pheatmap(
+  mat,
+  clustering_distance_rows = "euclidean",
+  clustering_distance_cols = "euclidean",
+  clustering_method = "ward.D2",
+  color = colorRampPalette(
+    c(
+      "white",
+      "darkgreen"
+    )
+  )(100)
+)
+```
+
+## Export figure
+
+```{r export-heatmap, eval=FALSE}
+png(
+  "F2.png",
+  width = 5000,
+  height = 3500,
+  units = "px",
+  res = 600
+)
+
+pheatmap(
+  mat,
+  clustering_distance_rows = "euclidean",
+  clustering_distance_cols = "euclidean",
+  clustering_method = "ward.D2",
+  color = colorRampPalette(
+    c(
+      "white",
+      "darkgreen"
+    )
+  )(100)
+)
+
+dev.off()
+```
+
+# Appendix D. Multiverse analysis
+
+## Chi-square tests
+
+```{r chisquare-tests}
+tabla_firstAOI <- table(
+  TrajectoryFeatures$FirstAOI,
+  TrajectoryFeatures$Choice
+)
+
+test_firstAOI <- chisq.test(
+  tabla_firstAOI
+)
+
+tabla_firstTransition <- table(
+  TrajectoryFeatures$FirstTransition,
+  TrajectoryFeatures$Choice
+)
+
+test_firstTransition <- chisq.test(
+  tabla_firstTransition
+)
+
+tabla_first3 <- table(
+  TrajectoryFeatures$First3AOIs,
+  TrajectoryFeatures$Choice
+)
+
+test_first3 <- chisq.test(
+  tabla_first3
+)
+```
+
+## ANOVAs
+
+```{r anovas}
+anova_nodes <- summary(
+  aov(
+    Nodes ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
+
+anova_edges <- summary(
+  aov(
+    Edges ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
+
+anova_entropy <- summary(
+  aov(
+    Entropy ~ Choice,
+    data = TrajectoryFeatures
+  )
+)
+```
+
+## Summary table
+
+```{r multiverse-table}
+multiverse_results <- data.frame(
+  Universe = c(
+    "FirstAOI",
+    "FirstTransition",
+    "First3AOIs",
+    "Nodes",
+    "Edges",
+    "Entropy"
+  ),
+
+  Test = c(
+    "Chi-square",
+    "Chi-square",
+    "Chi-square",
+    "ANOVA",
+    "ANOVA",
+    "ANOVA"
+  ),
+
+  Pvalue = c(
+    test_firstAOI$p.value,
+    test_firstTransition$p.value,
+    test_first3$p.value,
+    anova_nodes[[1]][
+      "Choice",
+      "Pr(>F)"
+    ],
+    anova_edges[[1]][
+      "Choice",
+      "Pr(>F)"
+    ],
+    anova_entropy[[1]][
+      "Choice",
+      "Pr(>F)"
+    ]
+  )
+)
+
+kable(
+  multiverse_results,
+  digits = 4,
+  caption = "Multiverse analysis of visual exploration."
+)
+```
+
+# Appendix E. Multinomial predictive models
+
+```{r prepare-choice}
+TrajectoryFeatures$Choice <- as.factor(
+  TrajectoryFeatures$Choice
+)
+```
+
+## Model estimation
+
+```{r multinomial-models}
+m1 <- multinom(
+  Choice ~ Entropy,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+m2 <- multinom(
+  Choice ~ Entropy + FirstAOI,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+m3 <- multinom(
+  Choice ~ Entropy + FirstTransition,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+
+m4 <- multinom(
+  Choice ~ Nodes + Edges + Entropy,
+  data = TrajectoryFeatures,
+  trace = FALSE
+)
+```
+
+## Comparative performance table
+
+```{r multinomial-results}
+results_models <- data.frame(
+  Model = c(
+    "M1",
+    "M2",
+    "M3",
+    "M4"
+  ),
+
+  Predictors = c(
+    "Entropy",
+    "FirstAOI + Entropy",
+    "FirstTransition + Entropy",
+    "Nodes + Edges + Entropy"
+  ),
+
+  McFadden_R2 = c(
+    pR2(m1)["McFadden"],
+    pR2(m2)["McFadden"],
+    pR2(m3)["McFadden"],
+    pR2(m4)["McFadden"]
+  ),
+
+  AIC = c(
+    AIC(m1),
+    AIC(m2),
+    AIC(m3),
+    AIC(m4)
+  )
+)
+
+results_models <- results_models %>%
+  mutate(
+    McFadden_R2 = round(
+      McFadden_R2,
+      4
+    ),
+    AIC = round(
+      AIC,
+      1
+    )
+  )
+
+kable(
+  results_models,
+  caption =
+    "Comparative performance of multinomial models predicting booking decisions from alternative representations of visual exploration."
+)
+```
